@@ -1,0 +1,6 @@
+{
+  "name": "ایزابل گیت",
+  "description": "سافتفون سازمانی اندروید برای اتصال به Issabel PBX (Asterisk) در شبکه داخلی و خارجی با پورت ناکینگ زمانبندیشده میکروتیک و نمایش تمامصفحه تماس ورودی.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
