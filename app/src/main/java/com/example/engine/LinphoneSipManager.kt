@@ -117,7 +117,7 @@ class LinphoneSipManager(
             message: String
         ) {
             val remoteNum: String = call.remoteAddress?.username?.takeIf { it.isNotBlank() }
-                ?: call.remoteAddressAsString.orEmpty()
+                ?: call.remoteAddress?.asStringUriOnly().orEmpty()
             val remoteName: String = call.remoteAddress?.displayName?.takeIf { it.isNotBlank() }
                 ?: remoteNum
             val dir = if (call.dir == Call.Dir.Incoming) CallDirection.INCOMING else CallDirection.OUTGOING
@@ -238,6 +238,11 @@ class LinphoneSipManager(
             created.isVideoCaptureEnabled = false
             created.isVideoDisplayEnabled = false
             created.isVideoPreviewEnabled = false
+            val transports = created.transports
+            transports.udpPort = -1
+            transports.tcpPort = -1
+            transports.tlsPort = -1
+            created.transports = transports
             created.setUserAgent("IssabelGate-Android", "1.0")
             created.isAutoIterateEnabled = true
             created.autoIterateForegroundSchedule = 20

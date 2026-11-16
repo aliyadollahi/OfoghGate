@@ -1,21 +1,77 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# IssabelGate ProGuard / R8 Keep Rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Preserve annotations, generic signatures, and stack-trace line numbers
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
+-keepattributes SourceFile, LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ------------------------------------------------------------------------------
+# Linphone SDK (org.linphone.*) & Native JNI VoIP / Audio / SIP Stack
+# ------------------------------------------------------------------------------
+-keep class org.linphone.** { *; }
+-keep interface org.linphone.** { *; }
+-keep enum org.linphone.** { *; }
+-keepclassmembers class org.linphone.** {
+    <init>(...);
+    *;
+}
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
+}
+-dontwarn org.linphone.**
+-dontwarn javax.naming.**
+-dontwarn java.beans.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ------------------------------------------------------------------------------
+# Room Database, Entities, DAOs & Generated Implementations
+# ------------------------------------------------------------------------------
+-keep class * extends androidx.room.RoomDatabase
+-keepclassmembers class * extends androidx.room.RoomDatabase {
+    *;
+}
+-keep class * extends androidx.room.RoomDatabase$Callback {
+    *;
+}
+-keep @androidx.room.Entity class * {
+    *;
+}
+-keep @androidx.room.Dao interface * {
+    *;
+}
+-keep @androidx.room.Dao class * {
+    *;
+}
+-keep class com.example.data.local.** {
+    *;
+}
+-dontwarn androidx.room.**
+
+# ------------------------------------------------------------------------------
+# Kotlinx Serialization (Provisioning Codec & Type-Safe Navigation Routes)
+# ------------------------------------------------------------------------------
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.example.data.model.**$$serializer {
+    *;
+}
+-keepclassmembers class com.example.data.model.** {
+    *** Companion;
+}
+-keep,includedescriptorclasses class com.example.data.provisioning.**$$serializer {
+    *;
+}
+-keepclassmembers class com.example.data.provisioning.** {
+    *** Companion;
+}
+-keep class com.example.AppRoute { *; }
+-keep class com.example.AppRoute$* { *; }
+
+# ------------------------------------------------------------------------------
+# Telecom ConnectionService, ForegroundService & BroadcastReceivers
+# ------------------------------------------------------------------------------
+-keep class com.example.engine.** { *; }
+-keep class com.example.IssabelGateApp { *; }

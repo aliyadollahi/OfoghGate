@@ -134,6 +134,7 @@ class SoftphoneConnectionService : ConnectionService() {
             runCatching { appContext.startActivity(intent) }
         }
 
+        @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
         override fun onCallAudioStateChanged(state: CallAudioState?) {
             super.onCallAudioStateChanged(state)
             val app = appContext.applicationContext as? IssabelGateApp ?: return

@@ -16,36 +16,46 @@ class BootAndAlarmReceiver : BroadcastReceiver() {
                 val store = EncryptedConfigStore(context)
                 val config = store.loadConfig()
                 if (config.serviceAutoStartOnBoot && config.isConfigured()) {
-                    SoftphoneForegroundService.startOrUpdate(context)
+                    runCatching {
+                        SoftphoneForegroundService.startOrUpdate(context)
+                    }
                 }
             }
 
             ACTION_SCHEDULED_KNOCK -> {
-                SoftphoneForegroundService.sendAction(
-                    context,
-                    SoftphoneForegroundService.ACTION_SCHEDULED_KNOCK_FIRE
-                )
+                runCatching {
+                    SoftphoneForegroundService.sendAction(
+                        context,
+                        SoftphoneForegroundService.ACTION_SCHEDULED_KNOCK_FIRE
+                    )
+                }
             }
 
             ACTION_CALL_ANSWER -> {
-                SoftphoneForegroundService.sendAction(
-                    context,
-                    SoftphoneForegroundService.ACTION_ANSWER_CALL
-                )
+                runCatching {
+                    SoftphoneForegroundService.sendAction(
+                        context,
+                        SoftphoneForegroundService.ACTION_ANSWER_CALL
+                    )
+                }
             }
 
             ACTION_CALL_DECLINE -> {
-                SoftphoneForegroundService.sendAction(
-                    context,
-                    SoftphoneForegroundService.ACTION_DECLINE_CALL
-                )
+                runCatching {
+                    SoftphoneForegroundService.sendAction(
+                        context,
+                        SoftphoneForegroundService.ACTION_DECLINE_CALL
+                    )
+                }
             }
 
             ACTION_CALL_HANGUP -> {
-                SoftphoneForegroundService.sendAction(
-                    context,
-                    SoftphoneForegroundService.ACTION_HANGUP_CALL
-                )
+                runCatching {
+                    SoftphoneForegroundService.sendAction(
+                        context,
+                        SoftphoneForegroundService.ACTION_HANGUP_CALL
+                    )
+                }
             }
         }
     }

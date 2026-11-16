@@ -138,7 +138,7 @@ private fun ForegroundServiceGuideSection() {
         color = MaterialTheme.colorScheme.primary
     )
     Text(
-        text = "برای جلوگیری از بسته شدن سوکت SIP و تایمر ناکینگ پس از کمینه شدن برنامه یا قفل شدن صفحه در اندروید ۸ تا ۱۶ و حالت Doze، سرویس باید با START_STICKY، کانال IMPORTANCE_HIGH (بدون صدا و ویبره مزاحم) و foregroundServiceType=\"phoneCall|dataSync\" اجرا شود و Keep-Alive دورهای روی هسته Linphone فعال باشد.",
+        text = "برای جلوگیری از بسته شدن سوکت SIP و تایمر ناکینگ پس از کمینه شدن برنامه یا قفل شدن صفحه در اندروید ۸ تا ۱۶ و حالت Doze، سرویس باید با START_STICKY، کانال IMPORTANCE_HIGH (بدون صدا و ویبره مزاحم) و foregroundServiceType=\"phoneCall\" اجرا شود و Keep-Alive دورهای روی هسته Linphone فعال باشد.",
         style = MaterialTheme.typography.bodyMedium
     )
 
@@ -147,7 +147,6 @@ private fun ForegroundServiceGuideSection() {
         code = """
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -155,7 +154,7 @@ private fun ForegroundServiceGuideSection() {
     android:name=".engine.SoftphoneForegroundService"
     android:enabled="true"
     android:exported="false"
-    android:foregroundServiceType="phoneCall|dataSync" />
+    android:foregroundServiceType="phoneCall" />
         """.trimIndent()
     )
 
@@ -187,8 +186,7 @@ class SoftphoneForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 1001, notif,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
             )
         } else {
             startForeground(1001, notif)

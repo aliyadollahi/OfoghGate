@@ -204,6 +204,12 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
             NetworkMode.AUTO_LAN_WAN -> {
                 if (app.networkDetector.isInsideOfficeLan(config)) {
                     ActiveRoutePath.LAN
+                } else if (config.wanHost.isBlank() && config.lanHost.isNotBlank() && !env.isCellular) {
+                    app.logger.log(
+                        LogCategory.NETWORK,
+                        "آدرس WAN تنظیم نشده؛ تلاش مستقیم روی LAN از طریق وای‌فای"
+                    )
+                    ActiveRoutePath.LAN
                 } else {
                     ActiveRoutePath.WAN_KNOCK
                 }
@@ -428,37 +434,45 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val compatFallback = NotificationCompat.Builder(this, CHANNEL_CALLS)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("تماس ورودی: ${displayName.ifBlank { number }}")
+            .setContentText("شماره داخلی: $number")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setOngoing(true)
+            .setFullScreenIntent(fullScreenPi, true)
+            .addAction(android.R.drawable.ic_menu_call, "پاسخ", answerPi)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "رد تماس", declinePi)
+            .build()
+
         val notification: Notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val caller = Person.Builder()
-                .setName(displayName.ifBlank { number })
-                .setImportant(true)
-                .build()
-            Notification.Builder(this, CHANNEL_CALLS)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("تماس ورودی ایزابل")
-                .setContentText("داخلی: $number")
-                .setCategory(Notification.CATEGORY_CALL)
-                .setOngoing(true)
-                .setAutoCancel(false)
-                .setFullScreenIntent(fullScreenPi, true)
-                .setStyle(Notification.CallStyle.forIncomingCall(caller, declinePi, answerPi))
-                .build()
+            runCatching {
+                val caller = Person.Builder()
+                    .setName(displayName.ifBlank { number })
+                    .setImportant(true)
+                    .build()
+                Notification.Builder(this, CHANNEL_CALLS)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle("تماس ورودی ایزابل")
+                    .setContentText("داخلی: $number")
+                    .setCategory(Notification.CATEGORY_CALL)
+                    .setOngoing(true)
+                    .setAutoCancel(false)
+                    .setFullScreenIntent(fullScreenPi, true)
+                    .setStyle(Notification.CallStyle.forIncomingCall(caller, declinePi, answerPi))
+                    .build()
+            }.getOrElse { compatFallback }
         } else {
-            NotificationCompat.Builder(this, CHANNEL_CALLS)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("تماس ورودی: $displayName")
-                .setContentText("شماره داخلی: $number")
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setOngoing(true)
-                .setFullScreenIntent(fullScreenPi, true)
-                .addAction(android.R.drawable.ic_menu_call, "پاسخ", answerPi)
-                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "رد تماس", declinePi)
-                .build()
+            compatFallback
         }
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIF_ID_INCOMING_CALL, notification)
+        runCatching {
+            nm.notify(NOTIF_ID_INCOMING_CALL, notification)
+        }.onFailure {
+            runCatching { nm.notify(NOTIF_ID_INCOMING_CALL, compatFallback) }
+        }
     }
 
     private fun cancelIncomingCallNotification() {
@@ -567,8 +581,7 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
             startForeground(
                 NOTIF_ID_SERVICE,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
             )
         } else {
             startForeground(NOTIF_ID_SERVICE, notification)
