@@ -65,6 +65,11 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+  packaging {
+    jniLibs {
+      excludes += listOf("**/libmsandroidcamera2.so")
+    }
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true

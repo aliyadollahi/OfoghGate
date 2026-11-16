@@ -227,8 +227,17 @@ class LinphoneSipManager(
         core?.let { return it }
         return runCatching {
             val factory = Factory.instance()
-            factory.setDebugMode(false, "IssabelGate")
-            val created = factory.createCore(null, null, context.applicationContext)
+            factory.enableLogCollection(org.linphone.core.LogCollectionState.Disabled)
+            val linphoneConfig = factory.createConfig(null).apply {
+                setBool("video", "capture", false)
+                setBool("video", "display", false)
+                setBool("video", "auto_initiate", false)
+                setBool("video", "auto_accept", false)
+            }
+            val created = factory.createCoreWithConfig(linphoneConfig, context.applicationContext)
+            created.isVideoCaptureEnabled = false
+            created.isVideoDisplayEnabled = false
+            created.isVideoPreviewEnabled = false
             created.setUserAgent("IssabelGate-Android", "1.0")
             created.isAutoIterateEnabled = true
             created.autoIterateForegroundSchedule = 20
