@@ -138,7 +138,7 @@ private fun ForegroundServiceGuideSection() {
         color = MaterialTheme.colorScheme.primary
     )
     Text(
-        text = "برای جلوگیری از بسته شدن سوکت SIP و تایمر ناکینگ پس از کمینه شدن برنامه یا قفل شدن صفحه در اندروید ۸ تا ۱۵، سرویس باید با START_STICKY، کانال IMPORTANCE_LOW و foregroundServiceType=\"phoneCall|dataSync\" اجرا شود و Keep-Alive دورهای روی هسته Linphone فعال باشد.",
+        text = "برای جلوگیری از بسته شدن سوکت SIP و تایمر ناکینگ پس از کمینه شدن برنامه یا قفل شدن صفحه در اندروید ۸ تا ۱۶ و حالت Doze، سرویس باید با START_STICKY، کانال IMPORTANCE_HIGH (بدون صدا و ویبره مزاحم) و foregroundServiceType=\"phoneCall|dataSync\" اجرا شود و Keep-Alive دورهای روی هسته Linphone فعال باشد.",
         style = MaterialTheme.typography.bodyMedium
     )
 
@@ -160,18 +160,28 @@ private fun ForegroundServiceGuideSection() {
     )
 
     CodeBoilerplateCard(
-        title = "2. SoftphoneForegroundService.kt — Persistent Notification & SIP Loop",
+        title = "2. SoftphoneForegroundService.kt — IMPORTANCE_HIGH Persistent Notification & SIP Loop",
         code = """
 class SoftphoneForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
-        createServiceChannel()
+        val channel = NotificationChannel(
+            CHANNEL_SERVICE, "سرویس پایدار سافتفون", NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            setSound(null, null)
+            enableVibration(false)
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+
         val notif = NotificationCompat.Builder(this, CHANNEL_SERVICE)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("ایزابل گیت")
             .setContentText("متصل به سرور SIP — آماده دریافت تماس")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setSilent(true)
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

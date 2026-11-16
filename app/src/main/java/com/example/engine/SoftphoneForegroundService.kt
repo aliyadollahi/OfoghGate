@@ -12,6 +12,7 @@ import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -48,6 +49,7 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
     private lateinit var app: IssabelGateApp
     private var ringtone: Ringtone? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
     private var reknockJob: Job? = null
     private var configObserverJob: Job? = null
 
@@ -56,6 +58,7 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
         app = application as IssabelGateApp
         createNotificationChannels()
         SoftphoneConnectionService.registerPhoneAccount(this)
+        acquireWifiLock()
         app.sipManager.initialize(this)
 
         startForegroundSafely(
@@ -342,6 +345,7 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
     override fun onCallConnected(number: String, displayName: String, direction: CallDirection) {
         stopRingtoneAndVibrate()
         cancelIncomingCallNotification()
+        SoftphoneConnectionService.markActive()
     }
 
     override fun onCallEnded(
@@ -508,12 +512,17 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
 
     private fun createNotificationChannels() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // IMPORTANCE_HIGH keeps the ForegroundService and Linphone SIP registration prioritized even in Doze mode
         val serviceChannel = NotificationChannel(
             CHANNEL_SERVICE,
             getString(R.string.notification_channel_service),
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
+            description = "حفظ اتصال دائمی SIP و پورت ناکینگ ایزابل در پسزمینه و حالت Doze"
             setShowBadge(false)
+            setSound(null, null)
+            enableVibration(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         val callsChannel = NotificationChannel(
             CHANNEL_CALLS,
@@ -538,8 +547,12 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(statusText)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setSilent(true)
             .setContentIntent(openPi)
             .build()
     }
@@ -559,6 +572,26 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
             )
         } else {
             startForeground(NOTIF_ID_SERVICE, notification)
+        }
+    }
+
+    private fun acquireWifiLock() {
+        runCatching {
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+            } else {
+                @Suppress("DEPRECATION")
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            }
+            if (wifiLock == null) {
+                wifiLock = wm.createWifiLock(mode, "IssabelGate::SipWifiLock").apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wifiLock?.isHeld == false) {
+                wifiLock?.acquire()
+            }
         }
     }
 
@@ -583,11 +616,14 @@ class SoftphoneForegroundService : Service(), SipCallEventCallback {
         runCatching {
             if (wakeLock?.isHeld == true) wakeLock?.release()
         }
+        runCatching {
+            if (wifiLock?.isHeld == true) wifiLock?.release()
+        }
         super.onDestroy()
     }
 
     companion object {
-        const val CHANNEL_SERVICE = "issabel_gate_service_channel"
+        const val CHANNEL_SERVICE = "issabel_gate_service_high_channel"
         const val CHANNEL_CALLS = "issabel_gate_calls_channel"
         private const val NOTIF_ID_SERVICE = 1001
         private const val NOTIF_ID_INCOMING_CALL = 1002

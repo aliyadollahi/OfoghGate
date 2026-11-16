@@ -4,7 +4,6 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
-import android.os.PowerManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -70,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.IssabelGateApp
 import com.example.data.model.ActiveCallState
 import com.example.data.model.CallUiState
+import com.example.engine.ProximitySensorManager
 import com.example.engine.SoftphoneForegroundService
 import com.example.ui.theme.IssabelGateTheme
 import com.example.ui.theme.MonoTextStyle
@@ -80,7 +80,7 @@ import kotlinx.coroutines.delay
 
 class IncomingCallActivity : ComponentActivity() {
 
-    private var proximityWakeLock: PowerManager.WakeLock? = null
+    private lateinit var proximitySensorManager: ProximitySensorManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,21 +88,26 @@ class IncomingCallActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val app = application as IssabelGateApp
+        proximitySensorManager = ProximitySensorManager(this, app.logger)
 
         setContent {
             IssabelGateTheme(darkTheme = true) {
                 val callState by app.sipManager.callUiState.collectAsStateWithLifecycle()
                 val snapshot by SoftphoneForegroundService.snapshot.collectAsStateWithLifecycle()
 
-                LaunchedEffect(callState.state) {
+                LaunchedEffect(callState.state, callState.isSpeakerOn) {
                     when (callState.state) {
                         ActiveCallState.CONNECTED,
                         ActiveCallState.OUTGOING_RINGING,
-                        ActiveCallState.HELD -> acquireProximityLock()
+                        ActiveCallState.HELD -> {
+                            proximitySensorManager.startForActiveCall(
+                                speakerOn = callState.isSpeakerOn
+                            )
+                        }
 
                         ActiveCallState.ENDED,
                         ActiveCallState.IDLE -> {
-                            releaseProximityLock()
+                            proximitySensorManager.stop()
                             if (callState.state == ActiveCallState.ENDED) {
                                 delay(900)
                                 finish()
@@ -169,31 +174,10 @@ class IncomingCallActivity : ComponentActivity() {
         }
     }
 
-    private fun acquireProximityLock() {
-        runCatching {
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (proximityWakeLock == null && pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
-                proximityWakeLock = pm.newWakeLock(
-                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
-                    "IssabelGate::CallProximity"
-                )
-            }
-            if (proximityWakeLock?.isHeld == false) {
-                proximityWakeLock?.acquire(60 * 60 * 1000L)
-            }
-        }
-    }
-
-    private fun releaseProximityLock() {
-        runCatching {
-            if (proximityWakeLock?.isHeld == true) {
-                proximityWakeLock?.release()
-            }
-        }
-    }
-
     override fun onDestroy() {
-        releaseProximityLock()
+        if (::proximitySensorManager.isInitialized) {
+            proximitySensorManager.stop()
+        }
         super.onDestroy()
     }
 
